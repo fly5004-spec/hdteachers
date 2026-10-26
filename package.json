@@ -1,0 +1,14 @@
+{
+  "name": "saenggibu-helper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "중학교 생기부 작성 도우미 (과세특 · 자율·자치 · 행발)",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "test": "node --test tests/rules.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
