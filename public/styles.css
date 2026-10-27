@@ -141,6 +141,43 @@ button{cursor:pointer}
 .b2.line{background:#fff;color:var(--primary);border:1.5px solid var(--primary)}
 .b2:disabled{opacity:.45;cursor:not-allowed}
 
+/* 고르기 묶음 · 활동별 역할 */
+.group-label{margin:4px 0 0;font-size:15px;font-weight:700;color:var(--ink-2)}
+.group-label .opt{font-weight:500;margin-left:4px}
+.chip.sm{min-height:44px;padding:6px 14px;font-size:14px}
+.memo-sm{min-height:80px}
+.roles{display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:12px;background:var(--tint);border:1px solid var(--line)}
+.role-row{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr);gap:8px;align-items:center}
+.role-row .role-name{font-size:15px;font-weight:600}
+.role-row input{grid-column:2}
+
+/* 성취기준 · 성취수준 */
+.upload-box{display:flex;flex-direction:column;gap:8px;padding:12px 16px;border:1.5px dashed rgba(24,60,45,.22);border-radius:12px;background:#FAFDFB;font-size:15px}
+.mini-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip.lv{min-width:56px;justify-content:center;font-weight:700}
+.score-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;align-items:end}
+.level-out{min-height:48px;display:flex;align-items:center;padding:0 14px;border-radius:12px;background:var(--accent);font-weight:800;font-size:16px}
+
+/* 저장한 문장 */
+#saved{gap:16px}
+#saved .rhead{align-items:flex-start}
+#saved .acts{flex:0 1 auto}
+#saved .acts .b2{flex:0 1 auto}
+.count{font-size:15px;font-weight:700;background:var(--soft);color:var(--primary-h);border-radius:999px;padding:2px 10px}
+.table-wrap{position:relative;overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.saved-table{width:100%;border-collapse:collapse;font-size:15px;min-width:640px}
+.saved-table th{white-space:nowrap;background:var(--tint);text-align:left;font-size:14px;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line)}
+.saved-table td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.saved-table tr:last-child td{border-bottom:none}
+.saved-table .nowrap{white-space:nowrap}
+.saved-table .num-cell{text-align:right;color:var(--muted)}
+.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.6}
+.tag{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--accent);font-size:13px;font-weight:700;white-space:nowrap}
+.mini{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid rgba(24,60,45,.16);background:#fff;font-size:14px;display:inline-flex;align-items:center;gap:4px;margin:2px 0}
+.mini:hover{background:var(--bg)}
+.mini.danger{color:var(--err)}
+.mini[data-armed]{background:var(--err-bg);border-color:var(--err-line);font-weight:700}
+
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:15px;opacity:0;pointer-events:none;transition:all .2s;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

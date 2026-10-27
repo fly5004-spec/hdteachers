@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
   neisBytes, toEumseum, toEumseumLoose, checkText, applyFix, applyEnding, detectEnding, josaRo,
 } from '../public/lib/rules.js';
-import { generateExample, shortenExample, rephraseExample } from '../public/lib/example.js';
+import { generateExample, shortenExample, rephraseExample, jayulSentence } from '../public/lib/example.js';
+import { recordsToSheets, recordsToXlsx, recordKey } from '../public/lib/records.js';
 
 test('NEIS 바이트 계산', () => {
   assert.equal(neisBytes('가나'), 6);
@@ -75,9 +76,94 @@ test('예시 문장 만들기', () => {
   });
   assert.ok(g.startsWith("'빛과 파동"));
   assert.equal(checkText(g, 'gwa').errors.length, 0, g);
-  const j = generateExample({ area: 'jayul', chips: ['학급 회의'], role: '학급 자치회 부회장', memo: '' });
+  const j = generateExample({ area: 'jayul', chips: ['학급 회의'], roleTitle: '학급 자치회 부회장', memo: '' });
   assert.ok(j.startsWith('학급 자치회 부회장으로서 '));
   assert.equal(generateExample({ area: 'hang', chips: [], memo: '' }), '');
   assert.ok(shortenExample(g).length < g.length);
   assert.notEqual(rephraseExample(g), g);
+});
+
+test('메모 없이도 충분한 길이', () => {
+  const g = generateExample({
+    area: 'gwa', subject: '과학', types: ['실험·관찰'],
+    chips: ['실험·활동 도구를 안전하게 다룸', '모둠 활동에서 자기 생각을 말함', '결과를 표나 그림으로 정리함'],
+    closing: '흥미와 자신감이 커짐', length: 'normal',
+  });
+  const r = checkText(g, 'gwa');
+  assert.ok(r.chars >= 150, `${r.chars}자: ${g}`);
+  assert.equal(r.errors.length, 0, g);
+  assert.ok(g.includes('과학에 대한 흥미와 자신감이 커짐'));
+  const short = generateExample({ area: 'gwa', subject: '과학', chips: ['궁금한 점을 질문함'], length: 'short' });
+  assert.ok(checkText(short, 'gwa').chars < r.chars);
+});
+
+test('메모는 그대로 붙이지 않고 다듬어 넣음', () => {
+  const g = generateExample({ area: 'gwa', subject: '과학', chips: ['궁금한 점을 질문함'], memo: '렌즈 상 크기 변화를 꼼꼼히 측정', length: 'normal' });
+  assert.ok(g.includes('특히 렌즈 상 크기 변화를 꼼꼼히 측정하는 모습을 보임.'), g);
+});
+
+test('자율·자치: 활동마다 다른 역할', () => {
+  assert.equal(jayulSentence('학급 회의', '회의 진행'), '학급 회의의 진행을 맡아 친구들이 고르게 의견을 낼 수 있도록 회의를 이끎');
+  assert.ok(jayulSentence('1인 1역', '분리배출').includes('분리배출 역할을 맡아'));
+  assert.ok(jayulSentence('학교 행사 (체육대회 등)', '__custom', '사진 기록').startsWith('학교 행사에서 사진 기록을 맡아'));
+  assert.equal(jayulSentence('캠페인 활동', ''), '학교 캠페인 활동에 참여하여 친구들에게 바른 생활 습관을 알림');
+  const g = generateExample({
+    area: 'jayul', length: 'normal',
+    chips: ['학급 회의', '캠페인 활동', '학교 행사 (체육대회 등)', '1인 1역'],
+    roles: { '학급 회의': '기록', '캠페인 활동': '홍보물 제작', '학교 행사 (체육대회 등)': '응원 담당', '1인 1역': '환경 정리' },
+  });
+  for (const k of ['기록을 맡아', '홍보물 제작을 맡아', '응원을 맡아', '환경 정리 역할을 맡아']) assert.ok(g.includes(k), k);
+  assert.equal(checkText(g, 'jayul').errors.length, 0, g);
+});
+
+test('저장 목록 → 엑셀', () => {
+  const recs = [
+    { area: 'gwa', grade: '2', cls: '3', num: '14', subject: '과학', text: '관찰함.', chars: 4, bytes: 10, savedAt: '2026-10-27T01:00:00Z' },
+    { area: 'gwa', grade: '2', cls: '3', num: '2', subject: '과학', text: '정리함.', chars: 4, bytes: 10, savedAt: '2026-10-27T01:00:00Z' },
+    { area: 'hang', grade: '2', cls: '3', num: '7', subject: '', text: '배려심이 깊음.', chars: 8, bytes: 20, savedAt: '2026-10-27T01:00:00Z' },
+  ];
+  const sheets = recordsToSheets(recs);
+  assert.deepEqual(sheets.map((s) => s.name), ['과세특', '행동특성 및 종합의견']);
+  assert.equal(sheets[0].rows[0][2], 2);
+  assert.equal(sheets[0].columns[3].header, '과목');
+  const bytes = recordsToXlsx(recs);
+  assert.equal(bytes[0], 0x50); assert.equal(bytes[1], 0x4b);
+  assert.notEqual(recordKey(recs[0]), recordKey({ ...recs[0], subject: '수학' }));
+  assert.equal(recordKey(recs[2]), recordKey({ ...recs[2], text: '다른 문장' }));
+});
+
+test('성취수준: 점수 → 수준, 수준별 문장', async () => {
+  const { scoreToLevel, standardSentence } = await import('../public/lib/achievement.js');
+  assert.equal(scoreToLevel(95, 100, '과학'), 'A');
+  assert.equal(scoreToLevel(79.5, 100, '과학'), 'C');
+  assert.equal(scoreToLevel(12, 20, '과학'), 'D');
+  assert.equal(scoreToLevel(75, 100, '체육'), 'B');
+  assert.equal(scoreToLevel(120, 100, '과학'), null);
+  const std = { code: '[예시-01]', text: '상이 생기는 과정을 설명할 수 있다.', levels: {} };
+  assert.ok(standardSentence(std, 'A', '과학').includes('깊이 있게'));
+  assert.ok(standardSentence(std, 'D', '과학').startsWith('상이 생기는 과정을 설명할 수 있도록'));
+  for (const lv of ['A', 'B', 'C', 'D', 'E']) {
+    const g = generateExample({ area: 'gwa', subject: '과학', chips: ['궁금한 점을 질문함'], level: lv, standard: std, length: 'normal' });
+    assert.equal(checkText(g, 'gwa').errors.length, 0, g);
+    assert.ok(!/[A-E]\s?수준|\d\s?점/.test(g), g);
+  }
+  assert.equal(checkText('수행평가에서 95점을 받음.', 'gwa').errors[0].cat, '점수·등급');
+});
+
+test('성취기준 파일 읽기 (CSV · 엑셀 양식)', async () => {
+  const { parseStandardsFile, standardsTemplate } = await import('../public/lib/standards.js');
+  const csv = '과목,성취기준 코드,성취기준,A 수준,B 수준\n과학,[9과01-01],"힘의 크기를 측정할 수 있다.",정확히 측정하고 설명할 수 있다.,\n';
+  const eucBytes = new Uint8Array(Buffer.from(new TextEncoder().encode(csv)));
+  const rows = await parseStandardsFile('a.csv', eucBytes.buffer, '수학');
+  assert.equal(rows[0].subject, '과학');
+  assert.equal(rows[0].code, '[9과01-01]');
+  assert.equal(rows[0].levels.A, '정확히 측정하고 설명할 수 있다.');
+  const noSubject = await parseStandardsFile('b.csv', new TextEncoder().encode('성취기준\n[9수01-01] 소인수분해를 할 수 있다.\n').buffer, '수학');
+  assert.equal(noSubject[0].subject, '수학');
+  assert.equal(noSubject[0].code, '[9수01-01]');
+  const x = await parseStandardsFile('t.xlsx', standardsTemplate('국어').buffer, '');
+  assert.equal(x.length, 2);
+  assert.equal(x[0].subject, '국어');
+  assert.ok(x[0].levels.A.includes('정확하게'));
+  await assert.rejects(parseStandardsFile('c.csv', new TextEncoder().encode('이름,점수\n가,1').buffer, '수학'));
 });

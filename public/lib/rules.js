@@ -31,6 +31,13 @@ export function josaRo(word) {
   return j === 0 || j === J_L ? '로' : '으로';
 }
 
+/** 받침에 따라 '을/를' */
+export function josaEul(word) {
+  const last = String(word).trim().slice(-1);
+  if (!isHangul(last)) return '를';
+  return jong(last) === 0 ? '를' : '을';
+}
+
 /** 문장 끝이 교사 관찰 어체(음슴체: ~함, ~했음, ~보임, ~됨 ...)인지 */
 export function endsOk(core) {
   const last = core.trim().slice(-1);
@@ -132,6 +139,8 @@ export const FORBIDDEN = [
     msg: '논문·특허·책 출간 실적은 적을 수 없어요.' },
   { cat: '외부 기관', re: /(대학교?|대학원)\s?(캠프|프로그램|연구소|교수)/g,
     msg: '대학 등 외부 기관 프로그램은 적을 수 없어요.' },
+  { cat: '점수·등급', re: /\d+\s?점(?!검)|점수|성취\s?수준|[A-E]\s?(등급|수준)|\d\s?등급|만점/g,
+    msg: '점수, 등급, 성취수준(A~E)은 문장에 적지 않아요. 수준에 맞는 활동 모습으로 써 주세요.' },
   { cat: '장학·모의고사', re: /장학생|장학금|모의고사|모의평가/g,
     msg: '장학생 선발, 모의고사 성적은 적을 수 없어요.' },
 ];

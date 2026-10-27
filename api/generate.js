@@ -2,7 +2,8 @@
 // 환경 변수 ANTHROPIC_API_KEY가 있으면 AI로 문장을 만들고, 없으면 규칙 기반 '예시 문장'을 돌려줍니다.
 import { generateExample, rephraseExample, shortenExample } from '../public/lib/example.js';
 import { toEumseumLoose, splitSentences } from '../public/lib/rules.js';
-import { AREA_NAMES, LENGTHS } from '../public/lib/data.js';
+import { AREA_NAMES, LENGTHS, CLOSINGS } from '../public/lib/data.js';
+import { jayulSentence } from '../public/lib/example.js';
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 
@@ -11,7 +12,7 @@ const SYSTEM = `당신은 대한민국 중학교 교사의 학교생활기록부
 1. 교사가 관찰한 시점으로 씁니다. 모든 문장의 끝은 '~함', '~했음', '~보임', '~임', '~됨'처럼 명사형(음슴체)으로 끝냅니다. '~다', '~습니다', '~요'로 끝내지 않습니다.
 2. 중학생 수준에 맞게, 고등학교처럼 지나치게 깊은 학술 용어나 과장된 표현을 쓰지 않습니다. 짧고 구체적인 행동 중심으로 씁니다.
 3. 입력에 없는 사실(활동, 결과, 수치, 진로)을 지어내지 않습니다.
-4. 다음 내용은 절대 쓰지 않습니다: 교내·외 대회 참가와 수상 실적, 공인어학시험(토익 등) 이름과 점수, 자격증·인증시험, 부모의 직업 등 사회·경제적 지위, 사교육(학원·과외), 해외 연수·봉사, 논문·특허·출간, 대학 등 외부 기관 프로그램, 장학생, 모의고사 성적. 입력에 이런 내용이 있어도 빼고 씁니다.
+4. 다음 내용은 절대 쓰지 않습니다: 점수·등급·성취수준(A~E), 교내·외 대회 참가와 수상 실적, 공인어학시험(토익 등) 이름과 점수, 자격증·인증시험, 부모의 직업 등 사회·경제적 지위, 사교육(학원·과외), 해외 연수·봉사, 논문·특허·출간, 대학 등 외부 기관 프로그램, 장학생, 모의고사 성적. 입력에 이런 내용이 있어도 빼고 씁니다.
 5. 다른 학생과 비교하거나 순위를 매기는 표현을 쓰지 않습니다.
 6. 학생 이름은 쓰지 않습니다.
 7. 결과 문장만 출력합니다. 제목, 따옴표, 설명, 줄바꿈 없이 한 문단으로 씁니다.`;
@@ -40,10 +41,29 @@ function buildPrompt(body) {
     lines.push(`과목: ${input.subject || ''}`);
     if (input.activity) lines.push(`단원·활동: ${input.activity}`);
   }
-  if (area === 'jayul' && input.role) lines.push(`맡은 역할: ${input.role}`);
-  const picks = [...(input.chips || []), ...(input.custom || [])];
-  if (picks.length) lines.push(`교사가 고른 관찰 모습: ${picks.join(' / ')}`);
-  if (input.memo) lines.push(`교사 관찰 메모: ${String(input.memo).slice(0, 1000)}`);
+  if (area === 'gwa' && input.standard && input.standard.text) {
+    lines.push(`관련 성취기준(그대로 옮겨 적지 말고 학생 활동으로 풀어 쓸 것): ${input.standard.text}`);
+    if (input.level && input.standard.levels && input.standard.levels[input.level]) lines.push(`이 학생 수준의 기술: ${input.standard.levels[input.level]}`);
+  }
+  if (area === 'gwa' && input.level) {
+    const guide = { A: '개념을 깊이 이해하고 새로운 상황에 적용하는 모습 중심', B: '개념을 바르게 이해하고 활용하는 모습 중심', C: '기본 개념을 이해하고 성실히 참여하는 모습 중심', D: '노력하며 조금씩 나아지는 성장 중심(부정적 표현 금지)', E: '꾸준한 참여와 성장 가능성 중심(부정적 표현 금지)' }[input.level];
+    if (guide) lines.push(`표현의 깊이: ${guide}. 성취수준(A~E)이나 점수는 절대 문장에 쓰지 말 것.`);
+  }
+  if (area === 'gwa' && (input.types || []).length) lines.push(`수업 활동 종류: ${input.types.join(', ')}`);
+  if (area === 'jayul') {
+    if (input.roleTitle) lines.push(`학급 직책: ${input.roleTitle}`);
+    const acts = [...(input.chips || []), ...(input.custom || [])];
+    if (acts.length) {
+      lines.push('참여한 활동과 역할(활동마다 역할이 다르니 섞지 말 것):');
+      acts.forEach((a, i) => lines.push(`- ${jayulSentence(a, (input.roles || {})[a], (input.roleCustom || {})[a], i)}`));
+    }
+  } else {
+    const picks = [...(input.chips || []), ...(input.custom || [])];
+    if (picks.length) lines.push(`교사가 고른 관찰 모습: ${picks.join(' / ')}`);
+  }
+  const closing = (CLOSINGS[area] || []).find((c) => c.label === input.closing);
+  if (closing) lines.push(`마지막 문장 방향: ${closing.label}`);
+  if (input.memo) lines.push(`꼭 넣을 장면(그대로 옮기지 말고 자연스럽게 다듬어 넣기): ${String(input.memo).slice(0, 500)}`);
   return lines.join('\n');
 }
 
