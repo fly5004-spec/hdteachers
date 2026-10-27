@@ -1,10 +1,13 @@
-import { SUBJECTS, GWA_TYPES, GWA_CHIPS, HANG_CHIPS, JAYUL_CHIPS, CLOSINGS, LENGTHS } from './lib/data.js';
+import { SUBJECTS, GWA_CHIPS, HANG_CHIPS, JAYUL_CHIPS, CLOSINGS, LENGTHS } from './lib/data.js';
 import { checkText, applyFix, applyEnding, detectEnding } from './lib/rules.js';
 import { generateExample, rephraseExample, shortenExample } from './lib/example.js';
 import { recordKey, recordsToXlsx, xlsxFileName, AREA_SHEETS } from './lib/records.js';
 import { levelsFor, levelCount, scoreToLevel, stripCode } from './lib/achievement.js';
 import { parseStandardsFile, standardsTemplate } from './lib/standards.js';
 import { LEVEL_CUTS } from './lib/data.js';
+import { analyzeGwa, analyzeJayul, studentKey, RESULT_TEMPLATE_ROWS } from './lib/analyze.js';
+import { readStudentFiles } from './lib/intake.js';
+import { buildXlsx } from './lib/xlsx.js';
 
 // ---------- 도우미 ----------
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -69,7 +72,7 @@ function persistSaved() {
 function newArea() {
   return {
     grade: '2', cls: '3', num: '1', subject: '', activity: '', roleTitle: '',
-    types: [], chips: [], custom: [], roles: {}, roleCustom: {}, closing: null,
+    types: [], chips: [], custom: [], roles: {}, roleCustom: {}, closing: null, analysis: null,
     memo: '', length: 'normal',
     level: null, levelMode: 'pick', score: '', scoreMax: '100', standardCode: '',
     text: '', history: [], status: 'idle', source: null,
@@ -77,6 +80,7 @@ function newArea() {
   };
 }
 const state = {
+  roster: { gwa: null, jayul: null }, // 올린 학생 자료 (메모리에만, 새로고침하면 사라짐)
   top: 'gwa', sub: 'hang',
   areas: { gwa: newArea(), jayul: newArea(), hang: newArea() },
   saved: loadSaved(),
@@ -85,7 +89,8 @@ const state = {
 const cur = () => (state.top === 'gwa' ? 'gwa' : state.sub);
 const A = () => state.areas[cur()];
 const chipsOf = (area) => (area === 'gwa' ? GWA_CHIPS : area === 'hang' ? HANG_CHIPS : JAYUL_CHIPS);
-const hasInput = (s) => s.chips.length > 0 || s.custom.length > 0 || s.memo.trim().length > 0 || !!currentStandard(s);
+const hasInput = (s) => s.chips.length > 0 || s.custom.length > 0 || s.memo.trim().length > 0 || !!currentStandard(s)
+  || (s === state.areas.gwa && (!!effectiveLevel(s) || !!(s.analysis && ((s.analysis.strengths || []).length || (s.analysis.growth || []).length))));
 const standardsOf = (subject) => state.standards[String(subject || '').trim()] || [];
 function currentStandard(s) {
   if (!s.standardCode) return null;
@@ -132,6 +137,7 @@ const payload = (s) => ({
   subject: s.subject, activity: s.activity, roleTitle: s.roleTitle,
   types: s.types, chips: s.chips, custom: s.custom, roles: s.roles, roleCustom: s.roleCustom,
   closing: s.closing, memo: s.memo, length: s.length,
+  analysis: cur() === 'gwa' && s.analysis ? { strengths: s.analysis.strengths || [], growth: s.analysis.growth || [] } : null,
 });
 
 // ---------- 왼쪽: 입력 ----------
@@ -166,6 +172,139 @@ function rolesBox(s) {
       <p class="group-label">활동별 역할 <span class="opt">고르지 않으면 '참여한 모습'으로 써요</span></p>
       ${rows}
     </div>`;
+}
+
+// ---------- 학생 자료(수행평가 결과 · 활동 보고서) ----------
+function savedFor(area, st, subject) {
+  return state.saved.find((r) => r.area === area && r.grade === st.grade && r.cls === st.cls && r.num === st.num
+    && (area !== 'gwa' || r.subject === subject));
+}
+
+function rosterBox(area, s) {
+  if (area === 'hang') return '';
+  const R = state.roster[area];
+  const what = area === 'gwa' ? '수행평가 결과(엑셀·CSV·PDF)' : '학생 활동 보고서(PDF·엑셀·텍스트)';
+  if (!R) {
+    return `
+    <div class="upload-box roster-empty">
+      <strong>${svg(I.load, 18)}학생 자료로 한 번에 쓰기 <span class="opt">(선택)</span></strong>
+      <span>${what}를 올리면 학생마다 내용을 분석해 문장을 만들어요. 이전·다음 버튼으로 한 명씩 넘기며 확인할 수 있어요.</span>
+      <div class="mini-row">
+        <button type="button" class="mini" data-roster-upload>${svg(I.load, 16)}자료 올리기</button>
+        <button type="button" class="mini" data-roster-template>${svg(I.sheet, 16)}양식 내려받기</button>
+      </div>
+    </div>`;
+  }
+  const st = R.students[R.idx];
+  const savedN = R.students.filter((x) => savedFor(area, x, s.subject)).length;
+  const an = st ? (area === 'gwa' ? analyzeGwa(st) : analyzeJayul(st)) : null;
+  const lv = area === 'gwa' && st && st.score !== null ? scoreToLevel(st.score, st.max, s.subject) : null;
+  const found = [];
+  if (area === 'gwa' && st && st.score !== null) found.push(['수행평가', `${st.score} / ${st.max ?? '?'}${lv ? ` → ${lv} 수준` : ''}`]);
+  if (an && an.strengths && an.strengths.length) found.push(['잘한 요소', an.strengths.join(', ')]);
+  if (an && an.growth && an.growth.length) found.push(['더 노력할 요소', an.growth.join(', ')]);
+  if (an && an.chips.length) found.push([area === 'gwa' ? '찾은 모습' : '찾은 활동', an.chips.join(', ')]);
+  if (an && an.roles && Object.keys(an.roles).length) found.push(['찾은 역할', Object.entries(an.roles).map(([k, v]) => `${k.replace(/\s*\(.*?\)/, '')}: ${v}`).join(', ')]);
+  if (an && an.roleTitle) found.push(['직책', an.roleTitle]);
+  if (an && an.highlights.length) found.push(['꼭 넣을 장면', an.highlights.join(' / ')]);
+  const raw = st ? st.texts.join(' ').replace(/\s+/g, ' ').trim() : '';
+  return `
+    <div class="roster">
+      <div class="roster-nav">
+        <button type="button" class="b2 line" data-roster-prev ${R.idx > 0 ? '' : 'disabled'}>${svg('<path d="m15 18-6-6 6-6"/>', 20)}이전</button>
+        <select class="in" data-roster-select aria-label="학생 고르기">
+          ${R.students.map((x, i) => `<option value="${i}"${i === R.idx ? ' selected' : ''}>${esc(`${x.grade}학년 ${x.cls}반 ${x.num}번 ${x.name || ''}`.trim())}${savedFor(area, x, s.subject) ? ' ✓' : ''}</option>`).join('')}
+        </select>
+        <button type="button" class="b2 line" data-roster-next ${R.idx < R.students.length - 1 ? '' : 'disabled'}>다음${svg('<path d="m9 18 6-6-6-6"/>', 20)}</button>
+      </div>
+      <div class="mini-row roster-meta">
+        <span class="opt">${R.idx + 1} / ${R.students.length}명 · 저장 ${savedN}명</span>
+        <button type="button" class="mini" data-roster-upload>${svg(I.load, 16)}자료 더 올리기</button>
+        <button type="button" class="mini danger" data-roster-clear>${svg(I.trash, 16)}자료 닫기</button>
+      </div>
+      ${R.notes.length ? `<ul class="roster-notes">${R.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+      <details class="found" open>
+        <summary>이 학생 자료에서 찾은 내용</summary>
+        ${found.length ? `<dl>${found.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : '<p class="hint">자료에서 찾은 내용이 없어요. 아래에서 직접 골라 주세요.</p>'}
+        ${raw ? `<p class="raw"><span class="opt">원문 일부</span> ${esc(raw.length > 220 ? raw.slice(0, 220) + '…' : raw)}</p>` : ''}
+      </details>
+    </div>`;
+}
+
+/** 자료 속 한 학생을 화면에 채우고 바로 문장 만들기 */
+function applyStudent(area, idx) {
+  const R = state.roster[area];
+  if (!R || !R.students[idx]) return;
+  R.idx = idx;
+  const st = R.students[idx];
+  const s = state.areas[area];
+  Object.assign(s, {
+    grade: st.grade || s.grade, cls: st.cls || s.cls, num: st.num,
+    custom: [], roleCustom: {}, text: '', history: [], status: 'idle', source: null,
+    emptyErr: false, subjectErr: false, addOpen: false, snap: null,
+  });
+  const rec = savedFor(area, s, s.subject);
+  if (rec) {
+    const inp = rec.input || {};
+    Object.assign(s, {
+      chips: inp.chips || [], custom: inp.custom || [], roles: inp.roles || {}, roleCustom: inp.roleCustom || {},
+      roleTitle: inp.roleTitle || '', memo: inp.memo || '', level: rec.level || null, levelMode: 'pick',
+      analysis: inp.analysis || null, text: rec.text, status: 'done',
+    });
+    renderAll();
+    toast(`${s.num}번은 이미 저장한 문장이 있어 불러왔어요.`);
+    return;
+  }
+  if (area === 'gwa') {
+    const an = analyzeGwa(st);
+    Object.assign(s, { chips: an.chips, memo: an.highlights.join('. ') + (an.highlights.length ? '.' : ''), analysis: an });
+    if (st.score !== null) Object.assign(s, { levelMode: 'score', score: String(st.score), scoreMax: String(st.max || 100), level: null });
+    else Object.assign(s, { level: null, score: '' });
+  } else {
+    const an = analyzeJayul(st);
+    Object.assign(s, { chips: an.chips, roles: an.roles, roleTitle: an.roleTitle, memo: an.highlights.join('. ') + (an.highlights.length ? '.' : '') });
+  }
+  if (area === 'gwa' && !s.subject) {
+    s.subjectErr = true;
+    renderAll();
+    toast('과목을 고르면 바로 문장을 만들어요.');
+    return;
+  }
+  if (!hasInput(s)) {
+    renderAll();
+    toast('이 학생 자료에서 찾은 내용이 없어요. 직접 골라 주세요.');
+    return;
+  }
+  generate();
+}
+
+async function uploadStudentFiles(files) {
+  const area = cur();
+  const s = A();
+  toast('자료를 읽고 있어요…');
+  const { students, notes } = await readStudentFiles(files, { grade: s.grade, cls: s.cls });
+  if (!students.length) {
+    toast(notes[0] || '학생 자료를 찾지 못했어요.');
+    if (state.roster[area]) { state.roster[area].notes = notes; renderLeft(); }
+    return;
+  }
+  const prev = state.roster[area];
+  let list = students;
+  if (prev) {
+    const map = new Map(prev.students.map((x) => [studentKey(x), x]));
+    for (const x of students) {
+      const p0 = map.get(studentKey(x));
+      if (p0) {
+        p0.texts.push(...x.texts); p0.elements.push(...x.elements);
+        if (p0.score === null) { p0.score = x.score; p0.max = x.max; }
+        p0.name ||= x.name;
+      } else map.set(studentKey(x), x);
+    }
+    list = [...map.values()].sort((a, b) => (+a.grade - +b.grade) || (+a.cls - +b.cls) || (+a.num - +b.num));
+  }
+  state.roster[area] = { students: list, idx: 0, notes };
+  toast(`학생 ${list.length}명의 자료를 불러왔어요.${notes.length ? ` (읽지 못한 파일 ${notes.length}개)` : ''}`);
+  applyStudent(area, 0);
 }
 
 function renderLeft() {
@@ -253,10 +392,7 @@ function renderLeft() {
     jayul: ['참여한 활동과 역할 고르기', '학생이 참여한 활동을 고른 뒤, 활동마다 맡은 역할을 골라 주세요.', '예) 학급 신문 만들기'],
   }[area];
 
-  const types = area === 'gwa' ? `
-      <p class="group-label">수업 활동 종류 <span class="opt">(선택)</span></p>
-      <div class="chips">${GWA_TYPES.map((t, i) => chipBtn('data-type', i, t, s.types.includes(t), ' sm')).join('')}</div>
-      <p class="group-label">관찰한 모습</p>` : '';
+  const types = '';
 
   const chips = chipsOf(area).map((c, i) => chipBtn('data-chip', i, c.label, s.chips.includes(c.label))).join('');
   const custom = s.custom.map((c, i) => `
@@ -309,7 +445,7 @@ function renderLeft() {
       <textarea class="memo memo-sm" data-field="memo" aria-label="꼭 넣고 싶은 장면" placeholder="${ph}" maxlength="500">${esc(s.memo)}</textarea>
     </div>`;
 
-  $('#left').innerHTML = `${sub}${step1}${achieve}${step2}${step3}${step4}
+  $('#left').innerHTML = `${sub}${rosterBox(area, s)}${step1}${achieve}${step2}${step3}${step4}
     <button type="button" class="go" data-go ${s.status === 'loading' ? 'disabled' : ''}>${svg(I.spark, 22)}생기부 문장 만들기</button>`;
 }
 
@@ -329,6 +465,20 @@ $('#left').addEventListener('click', (e) => {
   const t = e.target.closest('button');
   if (!t) return;
   if (t.dataset.sub) { state.sub = t.dataset.sub; renderAll(); return; }
+  if (t.hasAttribute('data-roster-upload')) { $('#dataFile').click(); return; }
+  if (t.hasAttribute('data-roster-template')) {
+    const T = RESULT_TEMPLATE_ROWS[area];
+    downloadBytes(buildXlsx([{ name: area === 'gwa' ? '수행평가 결과' : '활동 보고서', columns: T.columns.map(([header, width]) => ({ header, width, wrap: width > 30 })), rows: T.rows }]),
+      area === 'gwa' ? 'suhaeng_result_yangsik.xlsx' : 'jayul_report_yangsik.xlsx');
+    toast('양식을 내려받았어요. 예시 줄을 지우고 학생 자료를 붙여 넣어 주세요.');
+    return;
+  }
+  if (t.hasAttribute('data-roster-prev')) { applyStudent(area, state.roster[area].idx - 1); return; }
+  if (t.hasAttribute('data-roster-next')) { applyStudent(area, state.roster[area].idx + 1); return; }
+  if (t.hasAttribute('data-roster-clear')) {
+    armOrRun(t, '한 번 더 누르면 닫아요', () => { state.roster[area] = null; renderLeft(); toast('올린 자료를 닫았어요. 저장한 문장은 그대로 있어요.'); });
+    return;
+  }
   if (t.dataset.levelmode) { s.levelMode = t.dataset.levelmode; renderLeft(); return; }
   if (t.dataset.level !== undefined) { s.level = t.dataset.level || null; renderLeft(); return; }
   if (t.hasAttribute('data-std-upload')) {
@@ -349,12 +499,6 @@ $('#left').addEventListener('click', (e) => {
       renderLeft();
       toast(`${s.subject} 성취기준을 지웠어요.`);
     });
-    return;
-  }
-  if (t.dataset.type !== undefined) {
-    const v = GWA_TYPES[+t.dataset.type];
-    s.types = s.types.includes(v) ? s.types.filter((x) => x !== v) : [...s.types, v];
-    t.setAttribute('aria-pressed', String(s.types.includes(v)));
     return;
   }
   if (t.dataset.closing !== undefined) {
@@ -415,6 +559,7 @@ $('#left').addEventListener('keydown', (e) => {
 });
 
 $('#left').addEventListener('change', (e) => {
+  if (e.target.hasAttribute('data-roster-select')) { applyStudent(cur(), +e.target.value); return; }
   if (e.target.dataset.role === undefined) return;
   const s = A();
   const label = [...s.chips, ...s.custom][+e.target.dataset.role];
@@ -439,6 +584,7 @@ $('#left').addEventListener('input', (e) => {
     s.standardCode = '';
     if (s.level && !levelsFor(s.subject).includes(s.level)) s.level = null;
     renderLeft(); renderRight();
+    if (cur() === 'gwa' && state.roster.gwa && !s.text && hasInput(s)) generate();
   }
   if (f === 'standardCode') clearEmptyErr();
   if (f === 'score' || f === 'scoreMax') {
@@ -725,6 +871,18 @@ function saveAndNext() {
   state.saved.push(rec);
   const stored = persistSaved();
 
+  const R = state.roster[area];
+  if (R) {
+    if (R.idx < R.students.length - 1) {
+      toast(`저장했어요 (모두 ${state.saved.length}개). 다음 학생으로 넘어가요.`);
+      applyStudent(area, R.idx + 1);
+    } else {
+      renderAll();
+      toast('마지막 학생까지 저장했어요! 아래에서 엑셀로 내려받아 주세요.');
+      $('#saved').scrollIntoView({ behavior: 'smooth' });
+    }
+    return;
+  }
   const n = Math.min(Number(s.num) + 1, 45);
   Object.assign(s, {
     num: String(n), chips: [], custom: [], roles: {}, roleCustom: {}, roleTitle: '', memo: '',
@@ -849,6 +1007,13 @@ $('#saved').addEventListener('click', (e) => {
       toast('삭제했어요.');
     });
   }
+});
+
+// ---------- 학생 자료 파일 올리기 ----------
+$('#dataFile').addEventListener('change', async (e) => {
+  const files = [...(e.target.files || [])];
+  e.target.value = '';
+  if (files.length) await uploadStudentFiles(files);
 });
 
 // ---------- 성취기준 파일 올리기 ----------

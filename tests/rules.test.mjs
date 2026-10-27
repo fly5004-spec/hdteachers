@@ -167,3 +167,46 @@ test('성취기준 파일 읽기 (CSV · 엑셀 양식)', async () => {
   assert.ok(x[0].levels.A.includes('정확하게'));
   await assert.rejects(parseStandardsFile('c.csv', new TextEncoder().encode('이름,점수\n가,1').buffer, '수학'));
 });
+
+test('학생 자료: 수행평가 결과표 분석', async () => {
+  const { rowsToStudents, analyzeGwa } = await import('../public/lib/analyze.js');
+  const rows = [
+    ['2026 과학 수행평가'],
+    ['학년', '반', '번호', '이름', '측정 (10)', '발표 (10)', '관찰 내용'],
+    ['2', '3', '1', '가상일', '10', '5', '모둠 실험에서 측정값을 표로 정리하고 결과를 발표함'],
+    ['2', '3', '2', '가상이', '6', '9', '저는 친구들과 역할을 나누어 협력했습니다.'],
+  ];
+  const st = rowsToStudents(rows);
+  assert.equal(st.length, 2);
+  assert.equal(st[0].score, 15); assert.equal(st[0].max, 20);
+  const a = analyzeGwa(st[0]);
+  assert.deepEqual(a.strengths, ['측정']); assert.deepEqual(a.growth, ['발표']);
+  assert.ok(a.chips.includes('결과를 표나 그림으로 정리함'));
+  const g = generateExample({ area: 'gwa', subject: '과학', chips: a.chips, analysis: a, memo: a.highlights.join('. '), level: 'C', length: 'normal' });
+  assert.ok(g.includes('측정 영역에서 특히 뛰어난 모습을 보임'), g);
+  assert.ok(g.includes('발표 영역은 꾸준한 노력으로'), g);
+  assert.equal(checkText(g, 'gwa').errors.length, 0, g);
+  assert.ok(!/가상일|15|20/.test(g));
+  const b = analyzeGwa(st[1]);
+  assert.ok(b.highlights[0].startsWith('친구들과 역할을 나누어 협력함'), b.highlights[0]);
+});
+
+test('학생 자료: PDF 쪽 나누기와 보고서 분석', async () => {
+  const { pagesToStudents, analyzeJayul, toObservation, findStudentId } = await import('../public/lib/analyze.js');
+  assert.deepEqual(findStudentId('학번: 20314 홍가상 활동 보고서'), { grade: '2', cls: '3', num: '14', name: '홍가상' });
+  const pages = ['2학년 3반 1번 김가상\n저는 학급 회의에서 서기를 맡아 회의 내용을 기록했습니다.', '(이어지는 쪽) 환경 캠페인 포스터를 만들어 게시했습니다. 정말 재미있었다.', '2학년 3반 2번 이가상\n체육대회에서 응원 도구를 친구들과 함께 만들었습니다.'];
+  const st = pagesToStudents(pages, 'report.pdf', { grade: '2', cls: '3' });
+  assert.equal(st.length, 2);
+  assert.ok(st[0].texts[0].includes('캠페인'));
+  const a = analyzeJayul(st[0]);
+  assert.ok(a.chips.includes('학급 회의') && a.chips.includes('캠페인 활동'));
+  assert.equal(a.roles['학급 회의'], '기록');
+  assert.equal(a.roles['캠페인 활동'], '홍보물 제작');
+  assert.ok(!a.highlights.some((h) => /기록|포스터/.test(h)), '역할 문장과 겹치는 장면은 빠짐: ' + a.highlights.join('|'));
+  assert.equal(a.roleTitle, '');
+  assert.ok(!a.highlights.some((h) => h.includes('재미')));
+  assert.equal(analyzeJayul(st[1]).roles['학교 행사 (체육대회 등)'], '응원 담당');
+  assert.equal(toObservation('정말 재미있었다'), null);
+  const one = pagesToStudents(['활동 내용만 있는 글입니다. 포스터를 만들었다.'], '20305 박가상.pdf', {});
+  assert.equal(one[0].num, '5');
+});

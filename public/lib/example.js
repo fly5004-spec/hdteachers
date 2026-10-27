@@ -82,10 +82,16 @@ export function generateExample(input) {
       .map((l, i) => jayulSentence(l, roles[l], rc[l], i));
   }
   if (area !== 'jayul') items.push(...(input.custom || []).map(toEumseumLoose).filter(Boolean));
+  // 수행평가 결과표에서 찾은 강점·성장 요소 (점수는 쓰지 않음)
+  const an = area === 'gwa' ? input.analysis || {} : {};
+  if ((an.strengths || []).length) items.push(`${an.strengths.join('·')} 영역에서 특히 뛰어난 모습을 보임`);
+  if ((an.growth || []).length && tier !== 'high') items.push(`${an.growth.join('·')} 영역은 꾸준한 노력으로 점차 나아지고 있음`);
   items = items.map((s, i) => (CONNECT[i] || '') + s);
 
   const memo = polishMemo(memoToSentences(input.memo).slice(0, len.maxMemo));
   let list = [...items, ...memo];
+  // 성취기준 없이 수준만 있는 경우: 수준에 맞는 한 문장
+  if (tier && !(input.standard && input.standard.text)) list.push(LEVEL_SUMMARY[tier]);
   if (!list.length) return '';
 
   // 첫 문장 머리말
@@ -106,9 +112,6 @@ export function generateExample(input) {
     const title = String(input.roleTitle || '').trim();
     if (title) list[0] = `${title}${josaRo(title)}서 ` + list[0];
   }
-
-  // 성취기준 없이 수준만 고른 경우: 수준에 맞는 한 문장
-  if (tier && !(input.standard && input.standard.text)) list.push(LEVEL_SUMMARY[tier]);
 
   // 마무리 한 줄
   const closing = (CLOSINGS[area] || []).find((c) => c.label === input.closing);
