@@ -102,8 +102,10 @@ function punctuation(text, out) {
     const n = text.split(q).length - 1;
     if (n % 2) { const i = text.lastIndexOf(q); add(i, i + 1, null, `따옴표(${q})의 짝이 맞지 않아요.`); }
   }
+  const r8 = /([가-힣])[ \t]*(?=\n)/g;
+  while ((m = r8.exec(text))) add(m.index + 1, m.index + 1, '.', '줄 끝 문장에 마침표(.)가 없어요.', '');
   const trimmed = text.replace(/\s+$/, '');
-  if (trimmed && !/[.)\]’”'"]$/.test(trimmed)) add(trimmed.length, trimmed.length, '.', '마지막 문장 끝에 마침표(.)가 없어요.', '');
+  if (trimmed && !/[.!?！？)\]’”'"]$/.test(trimmed)) add(trimmed.length, trimmed.length, '.', '마지막 문장 끝에 마침표(.)가 없어요.', '');
 }
 
 function spaces(text, out) {

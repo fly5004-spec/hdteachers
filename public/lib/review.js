@@ -1,8 +1,8 @@
 // '생기부 점검' 탭: 입력 정리와 전체 점검 (브라우저·Node 공용)
-import { checkText } from './rules.js';
-import { spellCheck } from './spell.js';
-import { findDuplicates } from './dup.js';
-import { buildXlsx } from './xlsx.js';
+import { checkText } from './rules.js?v=9';
+import { spellCheck } from './spell.js?v=9';
+import { findDuplicates } from './dup.js?v=9';
+import { buildXlsx } from './xlsx.js?v=9';
 
 const num = (v) => {
   const n = Number(String(v ?? '').replace(/[^\d.]/g, ''));
@@ -102,7 +102,7 @@ export function reviewAll(items, area = 'gwa', kinds = CHECK_KINDS.map((k) => k.
   const labelOf = Object.fromEntries(items.map((x) => [x.id, x.label]));
   const results = items.map((x) => {
     const spell = spellCheck(x.text).filter((s) => on.has(s.cat));
-    const r = checkText(x.text, area);
+    const r = checkText(x.text, x.area || area);
     const rules = on.has('rules') ? r.issues : [];
     const dups = (dup.byId[x.id] || []).map((d) => ({ ...d, otherLabels: d.others.map((o) => labelOf[o]) }));
     const counts = {

@@ -1,17 +1,17 @@
-import { SUBJECTS, GWA_CHIPS, HANG_CHIPS, JAYUL_CHIPS, CLOSINGS, LENGTHS } from './lib/data.js';
-import { checkText, applyFix, applyEnding, detectEnding } from './lib/rules.js';
-import { generateExample, rephraseExample, shortenExample } from './lib/example.js';
-import { recordKey, recordsToXlsx, xlsxFileName, AREA_SHEETS } from './lib/records.js';
-import { levelsFor, levelCount, scoreToLevel, stripCode } from './lib/achievement.js';
-import { parseStandardsFile, standardsTemplate } from './lib/standards.js';
-import { LEVEL_CUTS } from './lib/data.js';
-import { analyzeGwa, analyzeJayul, studentKey, RESULT_TEMPLATE_ROWS } from './lib/analyze.js';
-import { readStudentFiles } from './lib/intake.js';
-import { buildXlsx } from './lib/xlsx.js';
-import { spellCheck, applySpellFix, applyAllSpell } from './lib/spell.js';
-import { findDuplicates } from './lib/dup.js';
-import { rowsToItems, pastedToItems, reviewAll, reviewToXlsx, reviewTemplate, CHECK_KINDS } from './lib/review.js';
-import { readXlsxRows as readRows, parseCsv as csvParse, decodeText as decodeBuf } from './lib/standards.js';
+import { SUBJECTS, GWA_CHIPS, HANG_CHIPS, JAYUL_CHIPS, CLOSINGS, LENGTHS } from './lib/data.js?v=9';
+import { checkText, applyFix, applyEnding, detectEnding } from './lib/rules.js?v=9';
+import { generateExample, rephraseExample, shortenExample } from './lib/example.js?v=9';
+import { recordKey, recordsToXlsx, xlsxFileName, AREA_SHEETS } from './lib/records.js?v=9';
+import { levelsFor, levelCount, scoreToLevel, stripCode } from './lib/achievement.js?v=9';
+import { parseStandardsFile, standardsTemplate } from './lib/standards.js?v=9';
+import { LEVEL_CUTS } from './lib/data.js?v=9';
+import { analyzeGwa, analyzeJayul, studentKey, RESULT_TEMPLATE_ROWS } from './lib/analyze.js?v=9';
+import { readStudentFiles } from './lib/intake.js?v=9';
+import { buildXlsx } from './lib/xlsx.js?v=9';
+import { spellCheck, applySpellFix, applyAllSpell } from './lib/spell.js?v=9';
+import { findDuplicates } from './lib/dup.js?v=9';
+import { rowsToItems, pastedToItems, reviewAll, reviewToXlsx, reviewTemplate, CHECK_KINDS } from './lib/review.js?v=9';
+import { readXlsxRows as readRows, parseCsv as csvParse, decodeText as decodeBuf } from './lib/standards.js?v=9';
 
 // ---------- 도우미 ----------
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -1129,52 +1129,34 @@ async function generate() {
 // ---------- 생기부 점검 탭 ----------
 const CK = {
   area: 'gwa', mode: 'paste', paste: '', kinds: new Set(CHECK_KINDS.map((k) => k.key)),
-  items: [], source: '', review: null, filter: 'issues', shown: 30, editing: null, fromSaved: false,
+  items: [], source: '', review: null, filter: 'issues', shown: 30, editing: null, fromSaved: false, multi: false,
 };
 const AREA_LABEL = { gwa: '교과 세부능력 및 특기사항', hang: '행동특성 및 종합의견', jayul: '자율·자치활동' };
 
 function renderCheckLeft() {
-  const savedN = state.saved.filter((x) => x.area === CK.area).length;
-  const mode = (k, l) => `<button type="button" data-cmode="${k}" aria-pressed="${CK.mode === k}">${l}</button>`;
-  let input;
-  if (CK.mode === 'paste') {
-    input = `
-      <textarea class="memo paste" data-cpaste aria-label="점검할 내용 붙여 넣기" placeholder="여기에 붙여 넣어 주세요.&#10;· 한 줄에 학생 한 명씩, 또는 빈 줄로 학생을 나눠 주세요.&#10;· 엑셀에서 번호·이름·내용 칸을 함께 복사해 붙여 넣어도 돼요.">${esc(CK.paste)}</textarea>
-      <p class="hint">${CK.paste.trim() ? `학생 ${pastedToItems(CK.paste).length}명으로 나눠졌어요.` : '나이스에서 복사한 내용도 그대로 붙여 넣을 수 있어요.'}</p>`;
-  } else if (CK.mode === 'file') {
-    input = `
-      <div class="upload-box">
-        <span>${CK.source ? `<b>${esc(CK.source)}</b> · 학생 ${CK.items.length}명을 불러왔어요.` : '엑셀(.xlsx)·CSV 파일을 올려 주세요. 생기부 내용이 든 칸을 자동으로 찾아요.'}</span>
-        <div class="mini-row">
-          <button type="button" class="mini" data-cfile>${svg(I.load, 16)}${CK.source ? '다른 파일 올리기' : '파일 올리기'}</button>
-          <button type="button" class="mini" data-ctemplate>${svg(I.sheet, 16)}양식 내려받기</button>
-        </div>
-      </div>`;
-  } else {
-    input = `
-      <div class="upload-box">
-        <span>이 브라우저에 저장한 ${esc(AREA_LABEL[CK.area])} 문장이 <b>${savedN}개</b> 있어요.</span>
-        <div class="mini-row"><button type="button" class="mini" data-csaved ${savedN ? '' : 'disabled'}>${svg(I.load, 16)}저장한 문장 불러오기</button></div>
-      </div>`;
-  }
+  const savedN = state.saved.length;
   $('#left').innerHTML = `
-    <div class="step">
-      <h2 class="sec"><span class="num">1</span>점검할 영역</h2>
-      <div class="seg" role="group" aria-label="점검할 영역">
-        ${['gwa', 'hang', 'jayul'].map((k) => `<button type="button" data-carea="${k}" aria-pressed="${CK.area === k}">${{ gwa: '과세특', hang: '행동특성 및 종합의견', jayul: '자율·자치' }[k]}</button>`).join('')}
+    <div class="checker-head">
+      <h2 class="sec">${svg(I.check, 24, 2.5)}문장 점검기</h2>
+      <p class="hint">점검할 생기부 문장을 붙여 넣고 <b>점검하기</b>를 누르세요. 맞춤법 · 띄어쓰기 · 문장 부호 · 기재요령(어체·금지 표현·분량)을 한 번에 확인해요.</p>
+    </div>
+    <textarea class="memo checker-input" data-cpaste aria-label="점검할 문장" placeholder="예) 실험에 적극적으로 참여 함.모둠원과 협력하여 할수있는 일을 찾고 역활을 성실이 수행함">${esc(CK.paste)}</textarea>
+    <label class="multi"><input type="checkbox" data-cmulti ${CK.multi ? 'checked' : ''}>
+      <span>여러 학생 내용을 <b>한 줄에 한 명씩</b> 넣었어요 <span class="opt">— 학생끼리 6어절 이상 같은 문장도 찾아요</span></span></label>
+    <div class="acts">
+      <button type="button" class="go" data-crun>${svg(I.check, 22, 2.5)}점검하기</button>
+      <button type="button" class="b2 line" data-cclear style="flex:0 0 auto">지우기</button>
+    </div>
+    <details class="more"${CK.mode !== 'paste' ? ' open' : ''}>
+      <summary>엑셀 파일이나 저장한 문장으로 한꺼번에 점검하기</summary>
+      <div class="mini-row">
+        <button type="button" class="mini" data-cfile>${svg(I.load, 16)}엑셀·CSV 파일 올리기</button>
+        <button type="button" class="mini" data-ctemplate>${svg(I.sheet, 16)}양식 내려받기</button>
+        <button type="button" class="mini" data-csaved ${savedN ? '' : 'disabled'}>${svg(I.save, 16)}저장한 문장 점검 (${savedN}개)</button>
       </div>
-    </div>
-    <div class="step">
-      <h2 class="sec"><span class="num">2</span>점검할 내용 넣기</h2>
-      <div class="seg" role="group" aria-label="넣는 방법">${mode('paste', '복사해서 붙여 넣기')}${mode('file', '엑셀·CSV 올리기')}${mode('saved', '저장한 문장')}</div>
-      ${input}
-    </div>
-    <div class="step">
-      <h2 class="sec"><span class="num">3</span>점검 항목</h2>
-      <div class="chips">${CHECK_KINDS.map((k) => `<button type="button" class="chip sm" data-ckind="${k.key}" aria-pressed="${CK.kinds.has(k.key)}">${esc(k.label)}</button>`).join('')}</div>
-    </div>
-    <button type="button" class="go" data-crun>${svg(I.check, 22, 2.5)}점검하기</button>
-    <p class="note">${svg(I.info, 18)}<span>맞춤법·띄어쓰기는 생기부에서 자주 틀리는 표현을 중심으로 점검해요. 모든 오류를 찾지는 못하니 나이스 입력 전 한 번 더 확인해 주세요. 올린 내용은 이 브라우저 안에서만 점검하고 어디에도 보내지 않아요.</span></p>`;
+      ${CK.source && CK.mode !== 'paste' ? `<p class="hint">${esc(CK.source)} · ${CK.items.length}명을 점검했어요.</p>` : ''}
+    </details>
+    <p class="note">${svg(I.info, 18)}<span>맞춤법·띄어쓰기는 생기부에서 자주 틀리는 표현을 중심으로 점검해요. 모든 오류를 찾지는 못하니 나이스 입력 전 한 번 더 확인해 주세요. 넣은 내용은 이 브라우저 안에서만 점검하고 어디에도 보내지 않아요.</span></p>`;
 }
 
 function segClasses(text, ranges) {
@@ -1183,9 +1165,11 @@ function segClasses(text, ranges) {
   for (const r of ranges) { cuts.add(r.a); cuts.add(r.b); }
   const pts = [...cuts].filter((x) => x >= 0 && x <= text.length).sort((a, b) => a - b);
   let out = '';
+  const zeros = new Set(ranges.filter((r) => r.a === r.b && r.a < text.trimEnd().length).map((r) => r.a));
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i];
     const b = pts[i + 1];
+    if (zeros.has(a)) out += '<mark class="hl-pu miss" title="마침표가 없어요">␣</mark>';
     const cls = [...new Set(ranges.filter((r) => r.a <= a && r.b >= b && r.b > r.a).map((r) => r.c))];
     const piece = esc(text.slice(a, b));
     out += cls.length ? `<mark class="${cls.join(' ')}">${piece}</mark>` : piece;
@@ -1227,6 +1211,7 @@ function checkCard(x, r) {
           : `<button type="button" class="mini" data-cedit-open="${esc(x.id)}">${svg(I.pen, 16)}직접 고치기</button>`}
         ${r.fixable ? `<button type="button" class="mini" data-cfixall="${esc(x.id)}">자동 고침 ${r.fixable}개 적용</button>` : ''}
         ${x.text !== x.original ? `<button type="button" class="mini" data-crevert="${esc(x.id)}">${svg(I.undo, 16)}원래대로</button>` : ''}
+        <button type="button" class="mini" data-ccopy="${esc(x.id)}">${svg(I.copy, 16)}복사하기</button>
       </div>
     </article>`;
 }
@@ -1236,18 +1221,30 @@ function renderCheckRight() {
   if (!R) {
     $('#right').innerHTML = `
       <div class="rhead"><h2 class="sec">점검 결과</h2><span class="pill wait">대기 중</span></div>
-      <div class="empty"><div class="eic">${svg(I.check, 28, 2.5)}</div><strong>점검할 내용을 넣고 '점검하기'를 눌러 주세요</strong>
-        <p>여러 학생의 내용을 한 번에 넣으면 학생끼리 겹치는 문장까지 찾아요.</p></div>
+      <div class="empty"><div class="eic">${svg(I.check, 28, 2.5)}</div><strong>위에 문장을 넣고 '점검하기'를 눌러 주세요</strong>
+        <p>틀린 곳을 색으로 표시하고, 고칠 방법을 알려 드려요.</p></div>
       <div class="alert soft">${svg(I.alert, 22)}<div><strong>같은 문장 중복 기재 주의</strong>교과세특·행동특성 및 종합의견에 <b>6어절 이상 같은 문장</b>이 <b>2명 이상</b>에게 있으면 사이버 감사 점검에서 모두 조회되고, 책임은 입력 교사에게 있어요.</div></div>`;
     return;
   }
   const S = R.summary;
   const byId = Object.fromEntries(R.results.map((r) => [r.id, r]));
+  if (CK.items.length === 1 && CK.mode === 'paste' && !CK.multi) {
+    const r0 = R.results[0];
+    const st = (n, l) => `<div class="stat${n ? ' bad' : ''}"><b>${n}</b><span>${l}</span></div>`;
+    $('#right').innerHTML = `
+      <div class="rhead"><h2 class="sec">점검 결과</h2>
+        ${r0.total ? `<span class="pill err">${svg(I.alert, 16, 2.5)}고칠 곳 ${r0.total}개</span>` : `<span class="pill ok">${svg(I.check, 16, 2.5)}문제를 찾지 못했어요</span>`}</div>
+      <div class="stats">${st(r0.counts['맞춤법'], '맞춤법')}${st(r0.counts['띄어쓰기'], '띄어쓰기')}${st(r0.counts['문장 부호'], '문장 부호')}${st(r0.counts.rules, '기재요령')}</div>
+      ${r0.fixable ? `<button type="button" class="b2 solid" data-cfixall="*" style="width:100%">자동으로 고칠 수 있는 것 모두 고치기 (${r0.fixable}개)</button>` : ''}
+      <div class="legend"><span><mark class="hl-sp">맞춤법</mark></span><span><mark class="hl-ws">띄어쓰기</mark></span><span><mark class="hl-pu">문장 부호</mark></span><span><mark class="hl-rl">기재요령</mark></span></div>
+      <div class="clist-wrap">${checkCard({ ...CK.items[0], label: '입력한 문장' }, r0)}</div>`;
+    return;
+  }
   const list = CK.items.filter((x) => CK.filter === 'all' || byId[x.id].total);
   const stat = (n, l, c = '') => `<div class="stat${n && c ? ` ${c}` : ''}"><b>${n}</b><span>${l}</span></div>`;
   const groups = R.groups.slice(0, 12).map((g) => `<li><span class="ctag t-dup">${g.ids.length}명</span><span>“${esc(g.text.length > 70 ? g.text.slice(0, 70) + '…' : g.text)}”<br><span class="opt">${esc(g.labels.slice(0, 10).join(', '))}${g.labels.length > 10 ? ` 외 ${g.labels.length - 10}명` : ''}</span></span></li>`).join('');
   $('#right').innerHTML = `
-    <div class="rhead"><h2 class="sec">점검 결과 <span class="opt">${esc(AREA_LABEL[CK.area])}</span></h2>
+    <div class="rhead"><h2 class="sec">점검 결과 <span class="opt">${CK.items.length}명</span></h2>
       ${S.withIssues ? `<span class="pill err">${svg(I.alert, 16, 2.5)}확인할 학생 ${S.withIssues}명</span>` : `<span class="pill ok">${svg(I.check, 16, 2.5)}모두 통과</span>`}</div>
     <div class="stats">
       ${stat(S.students, '학생')}${stat(S.dupStudents, '중복 문장 학생', 'bad')}${stat(S['맞춤법'], '맞춤법', 'bad')}
@@ -1298,35 +1295,58 @@ $('#left').addEventListener('click', (e) => {
   if (t.hasAttribute('data-cfile')) { $('#checkFile').click(); return; }
   if (t.hasAttribute('data-ctemplate')) { downloadBytes(reviewTemplate(), 'jeomgeom_yangsik.xlsx'); toast('양식을 내려받았어요.'); return; }
   if (t.hasAttribute('data-csaved')) {
-    const list = state.saved.filter((x) => x.area === CK.area)
-      .sort((a, b) => (+a.grade - +b.grade) || (+a.cls - +b.cls) || (+a.num - +b.num));
-    CK.items = list.map((r, i) => ({ id: `r${i}`, savedId: r.id, label: `${r.grade}-${r.cls}-${r.num}번`, grade: r.grade, cls: r.cls, num: r.num, name: '', subject: r.subject || '', text: r.text, original: r.text }));
+    const order = ['gwa', 'jayul', 'hang'];
+    const list = [...state.saved].sort((a, b) => order.indexOf(a.area) - order.indexOf(b.area)
+      || (+a.grade - +b.grade) || (+a.cls - +b.cls) || (+a.num - +b.num));
+    CK.items = list.map((r, i) => ({ id: `r${i}`, savedId: r.id, area: r.area, label: `${r.grade}-${r.cls}-${r.num}번 ${areaShort[r.area]}`, grade: r.grade, cls: r.cls, num: r.num, name: '', subject: r.subject || '', text: r.text, original: r.text }));
+    CK.mode = 'saved';
     CK.fromSaved = true;
     CK.source = '저장한 문장';
     toast(`저장한 문장 ${CK.items.length}개를 불러와 점검했어요.`);
     runReview();
     return;
   }
-  if (t.hasAttribute('data-crun')) {
-    if (CK.mode === 'paste') {
-      CK.items = pastedToItems(CK.paste);
-      CK.fromSaved = false;
-      if (!CK.items.length) { toast('점검할 내용을 붙여 넣어 주세요.'); return; }
-    }
-    if (!CK.items.length) { toast(CK.mode === 'file' ? '먼저 파일을 올려 주세요.' : '저장한 문장을 먼저 불러와 주세요.'); return; }
-    if (!CK.kinds.size) { toast('점검 항목을 하나 이상 골라 주세요.'); return; }
-    CK.shown = 30;
-    runReview();
-    if (window.innerWidth < 1000) $('#right').scrollIntoView({ behavior: 'smooth' });
+  if (t.hasAttribute('data-cclear')) {
+    CK.paste = ''; CK.items = []; CK.review = null; CK.mode = 'paste'; CK.source = '';
+    renderCheckLeft(); renderCheckRight(); $('[data-cpaste]')?.focus();
+    return;
   }
+  if (t.hasAttribute('data-crun')) runPasteCheck();
+});
+
+function runPasteCheck() {
+  const raw = CK.paste.replace(/\r\n?/g, '\n').trim();
+  if (!raw) { toast('점검할 문장을 넣어 주세요.'); $('[data-cpaste]')?.focus(); return; }
+  CK.mode = 'paste';
+  CK.fromSaved = false;
+  CK.source = '';
+  CK.items = CK.multi ? pastedToItems(raw) : [{ id: 'r0', label: '입력한 문장', grade: '', cls: '', num: '', name: '', subject: '', text: raw, original: raw }];
+  if (!CK.items.length) { toast('점검할 문장을 넣어 주세요.'); return; }
+  CK.shown = 30;
+  CK.editing = null;
+  runReview();
+  $('#right').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+$('#left').addEventListener('change', (e) => {
+  if (state.top !== 'check') return;
+  if (e.target.hasAttribute('data-cmulti')) CK.multi = e.target.checked;
+});
+$('#left').addEventListener('keydown', (e) => {
+  if (state.top !== 'check') return;
+  if (e.target.hasAttribute('data-cpaste') && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runPasteCheck(); }
 });
 $('#left').addEventListener('input', (e) => {
   if (state.top !== 'check') return;
   if (e.target.hasAttribute('data-cpaste')) {
     CK.paste = e.target.value;
-    const n = pastedToItems(CK.paste).length;
-    const h = e.target.nextElementSibling;
-    if (h) h.textContent = CK.paste.trim() ? `학생 ${n}명으로 나눠졌어요.` : '나이스에서 복사한 내용도 그대로 붙여 넣을 수 있어요.';
+    // 엑셀에서 여러 칸을 복사해 넣으면 여러 학생으로 봄
+    if (!CK.multi && CK.paste.includes('\t')) {
+      CK.multi = true;
+      const cb = $('[data-cmulti]');
+      if (cb) cb.checked = true;
+      toast('엑셀에서 복사한 내용이라 여러 학생으로 나눠 점검할게요.');
+    }
   }
 });
 
@@ -1340,6 +1360,7 @@ $('#checkFile').addEventListener('change', async (e) => {
     const rows = /\.xlsx$/i.test(f.name) ? await readRows(buf) : csvParse(decodeBuf(buf));
     CK.items = rowsToItems(rows);
     CK.fromSaved = false;
+    CK.mode = 'file';
     CK.source = f.name;
     renderCheckLeft();
     runReview();
@@ -1378,6 +1399,10 @@ $('#right').addEventListener('click', (e) => {
     if (ta) item(t.dataset.cdone).text = ta.value;
     CK.editing = null;
     runReview(true);
+    return;
+  }
+  if (t.dataset.ccopy) {
+    copy(item(t.dataset.ccopy).text).then((ok) => toast(ok ? '복사했어요.' : '복사하지 못했어요. 직접 선택해 복사해 주세요.'));
     return;
   }
   if (t.dataset.crevert) { const x = item(t.dataset.crevert); x.text = x.original; runReview(true); return; }

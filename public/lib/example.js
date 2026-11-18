@@ -1,8 +1,8 @@
 // AI가 연결되지 않았을 때 쓰는 '예시 문장' 만들기 (규칙 기반)
 // 메모가 없어도 고른 항목만으로 충분한 길이의 문장이 되도록 구성합니다.
-import { GWA_CHIPS, HANG_CHIPS, JAYUL_CHIPS, CLOSINGS, LENGTHS, LEVEL_SUMMARY } from './data.js';
-import { tierOf, standardSentence } from './achievement.js';
-import { toEumseumLoose, splitSentences, josaRo, josaEul } from './rules.js';
+import { GWA_CHIPS, HANG_CHIPS, JAYUL_CHIPS, CLOSINGS, LENGTHS, LEVEL_SUMMARY } from './data.js?v=9';
+import { tierOf, standardSentence } from './achievement.js?v=9';
+import { toEumseumLoose, splitSentences, josaRo, josaEul } from './rules.js?v=9';
 
 const GWA_MAP = new Map(GWA_CHIPS.map((c) => [c.label, c]));
 const HANG_MAP = new Map(HANG_CHIPS.map((c) => [c.label, c]));

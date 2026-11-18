@@ -1,5 +1,5 @@
 // 저장한 문장 목록 → 엑셀 시트
-import { buildXlsx } from './xlsx.js';
+import { buildXlsx } from './xlsx.js?v=9';
 
 export const AREA_SHEETS = {
   gwa: { sheet: '과세특', title: '교과 세부능력 및 특기사항' },
