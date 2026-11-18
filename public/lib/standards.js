@@ -1,5 +1,5 @@
 // 성취기준 파일(.csv · .xlsx) 읽기와 양식 만들기 (외부 라이브러리 없음)
-import { buildXlsx } from './xlsx.js?v=10';
+import { buildXlsx } from './xlsx.js?v=11';
 
 // ---------- 엑셀(.xlsx) 읽기 ----------
 async function inflateRaw(bytes) {

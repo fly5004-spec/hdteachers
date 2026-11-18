@@ -1,6 +1,6 @@
 // 학생 자료 파일 읽기 (브라우저 전용): 엑셀 · CSV · PDF · 텍스트
-import { readXlsxRows, parseCsv, decodeText } from './standards.js?v=10';
-import { rowsToStudents, pagesToStudents, mergeStudents } from './analyze.js?v=10';
+import { readXlsxRows, parseCsv, decodeText } from './standards.js?v=11';
+import { rowsToStudents, pagesToStudents, mergeStudents } from './analyze.js?v=11';
 
 let pdfjsReady = null;
 function loadPdfJs() {

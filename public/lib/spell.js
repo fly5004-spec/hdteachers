@@ -144,6 +144,42 @@ function depNouns(text, out) {
   }
 }
 
+// 명사 뒤 의존 명사·명사: '수업중' → '수업 중', '안내사항' → '안내 사항', 'A및B' → 'A 및 B'
+const ACT_NOUNS = '수업|활동|회의|발표|실험|토의|토론|학습|시험|이동|준비|진행|공부|작업|대화|과정|방학|학기|생활|체험|봉사|행사|모둠|등교|하교|급식|청소|조회|종례|상담|평가|과제|실습|관찰|조사|탐구|견학|대회|연습|경기|공연|축제|캠페인|프로젝트|친구|학생|교과|학교|학급|시간|하는|있는';
+const BOUND_RE = new RegExp(`(${ACT_NOUNS})(중|후|전|시|내|간|외)(?=[가-힣\\s,.]|$)`, 'g');
+function nounBound(text, out) {
+  BOUND_RE.lastIndex = 0;
+  let m;
+  while ((m = BOUND_RE.exec(text))) {
+    const after = text.slice(m.index + m[0].length, m.index + m[0].length + 1);
+    // '~시간', '~중요', '~전체'처럼 뒤 글자와 한 낱말이 되는 경우는 건너뜀
+    if (m[2] === '시' && after === '간') continue;
+    if (m[2] === '중' && /[요심앙]/.test(after)) continue;
+    if (m[2] === '전' && /[략체념]/.test(after)) continue;
+    if (m[2] === '내' && /[성]/.test(after)) continue;
+    if (m[2] === '간' && /[식]/.test(after)) continue;
+    if (m[1] === '시간' && m[2] !== '내' && m[2] !== '외') continue;
+    const before = text.slice(Math.max(0, m.index - 2), m.index);
+    if (/점심$/.test(before + m[1])) continue;
+    const start = m.index + m[1].length;
+    out.push({ cat: '띄어쓰기', start: m.index, end: m.index + m[0].length, word: m[0], to: `${m[1]} ${m[2]}`, msg: `'${m[2]}'은(는) 앞말과 띄어 써요.` });
+    // 뒤가 바로 붙어 있으면 그것도 띄움 ('수업중안내' → '수업 중 안내')
+    const two = text.slice(m.index + m[0].length, m.index + m[0].length + 2);
+    const joined = m[2] + after;
+    if (/[가-힣]/.test(after) && !/^[에이을의도은는으인임엔과와만까부]/.test(two)
+      && !/^(내용|내부|중간|중심|중요|후배|후기|전체|전략|시설|시작|시기|간식|외부|외국|전공|간단)$/.test(joined)) out[out.length - 1].to += ' ';
+  }
+  let r = /([가-힣]{2,})(사항)/g;
+  while ((m = r.exec(text))) {
+    if (/^(주의|유의|안내|전달|참고|준수|건의|협조|요청|확인|변경|공지|결정|합의|기타|필수|준비|금지|특이)$/.test(m[1].slice(-2))) {
+      const s0 = m.index + m[1].length - 2;
+      out.push({ cat: '띄어쓰기', start: s0, end: m.index + m[0].length, word: m[0].slice(m[1].length - 2), to: `${m[1].slice(-2)} 사항`, msg: "'사항'은 앞말과 띄어 써요." });
+    }
+  }
+  r = /([가-힣])및([가-힣])/g;
+  while ((m = r.exec(text))) out.push({ cat: '띄어쓰기', start: m.index, end: m.index + 3, word: m[0], to: `${m[1]} 및 ${m[2]}`, msg: "'및'은 앞뒤를 띄어 써요." });
+}
+
 // 너무 길게 붙은 어절: 어디를 띄울지 모를 때는 확인만 요청
 function longWords(text, out) {
   const re = /[가-힣]{10,}/g;
@@ -224,6 +260,7 @@ export function spellCheck(text) {
   objHa(t, out);
   adverbGlue(t, out);
   depNouns(t, out);
+  nounBound(t, out);
   // 긴 어절 경고는 다른 띄어쓰기 지적이 없는 곳에만
   const longs = [];
   longWords(t, longs);

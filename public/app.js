@@ -1,17 +1,17 @@
-import { SUBJECTS, GWA_CHIPS, HANG_CHIPS, JAYUL_CHIPS, CLOSINGS, LENGTHS } from './lib/data.js?v=10';
-import { checkText, applyFix, applyEnding, detectEnding } from './lib/rules.js?v=10';
-import { generateExample, rephraseExample, shortenExample } from './lib/example.js?v=10';
-import { recordKey, recordsToXlsx, xlsxFileName, AREA_SHEETS } from './lib/records.js?v=10';
-import { levelsFor, levelCount, scoreToLevel, stripCode } from './lib/achievement.js?v=10';
-import { parseStandardsFile, standardsTemplate } from './lib/standards.js?v=10';
-import { LEVEL_CUTS } from './lib/data.js?v=10';
-import { analyzeGwa, analyzeJayul, studentKey, RESULT_TEMPLATE_ROWS } from './lib/analyze.js?v=10';
-import { readStudentFiles } from './lib/intake.js?v=10';
-import { buildXlsx } from './lib/xlsx.js?v=10';
-import { spellCheck, applySpellFix, applyAllSpell } from './lib/spell.js?v=10';
-import { findDuplicates } from './lib/dup.js?v=10';
-import { rowsToItems, pastedToItems, reviewAll, reviewToXlsx, reviewTemplate, CHECK_KINDS } from './lib/review.js?v=10';
-import { readXlsxRows as readRows, parseCsv as csvParse, decodeText as decodeBuf } from './lib/standards.js?v=10';
+import { SUBJECTS, GWA_CHIPS, HANG_CHIPS, JAYUL_CHIPS, CLOSINGS, LENGTHS } from './lib/data.js?v=11';
+import { checkText, applyFix, applyEnding, detectEnding } from './lib/rules.js?v=11';
+import { generateExample, rephraseExample, shortenExample } from './lib/example.js?v=11';
+import { recordKey, recordsToXlsx, xlsxFileName, AREA_SHEETS } from './lib/records.js?v=11';
+import { levelsFor, levelCount, scoreToLevel, stripCode } from './lib/achievement.js?v=11';
+import { parseStandardsFile, standardsTemplate } from './lib/standards.js?v=11';
+import { LEVEL_CUTS } from './lib/data.js?v=11';
+import { analyzeGwa, analyzeJayul, studentKey, RESULT_TEMPLATE_ROWS } from './lib/analyze.js?v=11';
+import { readStudentFiles } from './lib/intake.js?v=11';
+import { buildXlsx } from './lib/xlsx.js?v=11';
+import { spellCheck, applySpellFix, applyAllSpell } from './lib/spell.js?v=11';
+import { findDuplicates } from './lib/dup.js?v=11';
+import { rowsToItems, pastedToItems, reviewAll, reviewToXlsx, reviewTemplate, CHECK_KINDS } from './lib/review.js?v=11';
+import { readXlsxRows as readRows, parseCsv as csvParse, decodeText as decodeBuf } from './lib/standards.js?v=11';
 
 // ---------- 도우미 ----------
 const $ = (sel, el = document) => el.querySelector(sel);
