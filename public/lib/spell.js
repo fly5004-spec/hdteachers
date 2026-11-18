@@ -58,13 +58,98 @@ function deung(text, out) {
 const NO_SPLIT_PREV = /^(잘|못|안|다|더|꼭|늘|또|함께|같이|모두|서로|많이|가장|매우|아주|좀|자주|끝까지|스스로)$/;
 const PARTICLE_END = /[을를이가은는도만에서로와과게히고며지께나야든]$/;
 function nounHam(text, out) {
-  const re = /([가-힣]{2,}) (함|했음|하였음|됨|되었음)(?=[.\s,]|$)/g;
+  // '참여 함', '노력 하였음', '선정 되어' → 붙여 씀 (명사 + 하다/되다)
+  const re = /([가-힣]{2,}) (하였음|하였고|하였으며|하였다|했음|했고|했으며|하는|하고|하며|하여|하면서|하기|한|할|함|되었음|되었고|되어|되는|된|됐음|됨)(?=[.\s,]|$)/g;
   let m;
   while ((m = re.exec(text))) {
     const prev = m[1];
-    if (NO_SPLIT_PREV.test(prev) || PARTICLE_END.test(prev)) continue;
-    const start = m.index + prev.length;
+    if (NO_SPLIT_PREV.test(prev) || PARTICLE_END.test(prev) || /[히이게]$/.test(prev)) continue;
+    if (/(하여|되어|하고|되고|하며|되며|해서|하면|아서|어서|으면|니까|는데|하게|은|을|운|인|던|다|요|한|할|된|는)$/.test(prev)) continue;
+    if (/^(한|할|된)$/.test(m[2]) && !/(정|성|용|력|구|표|결|획|천|리|사|해|현|여|가)$/.test(prev)) continue;
     out.push({ cat: '띄어쓰기', start: m.index, end: m.index + m[0].length, word: m[0], to: `${prev}${m[2]}`, msg: `'${prev}${m[2]}'처럼 붙여 써요.` });
+    re.lastIndex = m.index + m[0].length;
+  }
+}
+
+// 조사·어미 바로 뒤에 다음 낱말이 붙은 경우: '친구들과함께', '학급생활에적극적으로', '참여하며꾸준히'
+const NEXT_WORDS = '말함|말하|말해|적극|성실|꾸준|열심히|자신|친구|함께|스스로|다양|주도|참여|노력|관심|꼼꼼|차분|깊이|바르게|바른|정확|매우|항상|특히|또한|모둠|활동|수업|학급|학교|문제|의견|생각|발표|탐구|실험|과제|결과|내용|역할|태도|능력|모습|보임|보여|이해|해결|협력|배려|책임|선생님|친절|긍정|끝까지|처음|다른|새로운|많은|좋은|뛰어난|우수|높은|깊은|가장|서로|먼저|직접|자료|방법|과정|원리|개념|질문|토의|토론|정리|설명|제시|제안|표현|작성|완성|실천|맡아|맡은|돕|도와|도움|주변|자기|타인|공동체|리더십|성장|향상|흥미|자세|모범';
+const JOSA_RE = new RegExp(`([가-힣])(에서|에게|으로|하며|하고|하여|을|를|이|가|은|는|에|로|와|과|도|의|며|고|게)(${NEXT_WORDS})`, 'g');
+const NEED_BATCHIM = { 을: true, 이: true, 은: true, 과: true, 으로: true };
+const NEED_OPEN = { 를: true, 가: true, 는: true, 와: true };
+function josaGlue(text, out) {
+  JOSA_RE.lastIndex = 0;
+  let m;
+  while ((m = JOSA_RE.exec(text))) {
+    const [all, prev, josa, next] = m;
+    const b = jong(prev) !== 0;
+    if (NEED_BATCHIM[josa] && !b) continue;
+    if (NEED_OPEN[josa] && b && !(josa === '는' && prev === '하')) continue;
+    if (josa === '는' && b) continue;
+    // 한 낱말로 굳은 말은 건너뜀
+    const word = text.slice(Math.max(0, m.index - 3), m.index + all.length);
+    if (/(그동안|이런|그런|저런|이와|그와|이를|그를|이에|그에|도와|모두|서로)$/.test(word.slice(0, word.length - next.length))) continue;
+    const start = m.index + 1;
+    const end = m.index + all.length;
+    out.push({ cat: '띄어쓰기', start, end, word: `${josa}${next}`, to: `${josa} ${next}`, msg: `'${josa}' 뒤의 '${next}'은(는) 띄어 써요.` });
+    JOSA_RE.lastIndex = end - next.length;
+  }
+}
+
+// '활동을하며' → '활동을 하며'
+function objHa(text, out) {
+  const re = /([가-힣])(을|를)(하였|했|하며|하고|하여|하는|한다|할|함|하기|하면서)/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const b = jong(m[1]) !== 0;
+    if ((m[2] === '을') !== b) continue;
+    out.push({ cat: '띄어쓰기', start: m.index + 1, end: m.index + m[0].length, word: m[2] + m[3], to: `${m[2]} ${m[3]}`, msg: `'${m[2]}' 뒤의 '${m[3]}'은(는) 띄어 써요.` });
+  }
+}
+
+// '꾸준히노력함', '함께모둠' → 부사 뒤 띄어 씀 ('함께하다'처럼 한 낱말은 제외)
+const ADVERBS = '함께|꾸준히|열심히|성실히|적극적으로|능동적으로|자발적으로|스스로|매우|항상|특히|또한|먼저|직접|끝까지|차분히|꼼꼼히|자세히|분명히|정확히|바르게|즐겁게|성실하게|꾸준하게|적극적이고|무척|아주|더욱|점차|점점|조금씩|하나씩|끝내';
+const ADV_RE = new RegExp(`(^|[\\s"'(])(${ADVERBS})([가-힣])`, 'g');
+function adverbGlue(text, out) {
+  ADV_RE.lastIndex = 0;
+  let m;
+  while ((m = ADV_RE.exec(text))) {
+    const adv = m[2];
+    const next = text.slice(m.index + m[1].length + adv.length);
+    if (/^(하|해|했|한|할|함|의|도|는|만|와|과|이|가|을|를|에|로|부터|까지|씩)/.test(next)) continue;
+    const start = m.index + m[1].length;
+    const end = start + adv.length + 1;
+    out.push({ cat: '띄어쓰기', start, end, word: adv + m[3], to: `${adv} ${m[3]}`, msg: `'${adv}' 뒤는 띄어 써요.` });
+    ADV_RE.lastIndex = end - 1;
+  }
+}
+
+// 의존 명사·자주 틀리는 띄어쓰기
+const DEP_RULES = [
+  { re: /(\s수)(있|없)/g, to: (m) => `${m[1]} ${m[2]}`, msg: "'수 있다/없다'는 띄어 써요." },
+  { re: /([할볼줄알갈쓸올])줄(알|몰|모르)/g, to: (m) => `${m[1]} 줄 ${m[2]}`, msg: "'~ㄹ 줄 알다/모르다'는 띄어 써요." },
+  { re: /(하는|되는|한|된)(대로|만큼|바)(?=[\s,.을를이가]|$)/g, to: (m) => `${m[1]} ${m[2]}`, msg: '의존 명사는 앞말과 띄어 써요.' },
+  { re: /([가-힣\d])(동안)/g, to: (m) => `${m[1]} ${m[2]}`, msg: "'동안'은 앞말과 띄어 써요.", skip: /(그|오랫|한|이|저)동안$/ },
+  { re: /([가-힣])(뿐)(?=[\s,.만이]|$)/g, to: (m) => `${m[1]} ${m[2]}`, msg: "'뿐'은 앞말과 띄어 써요(조사로 쓰일 때는 붙여 써요).", skip: /(할|될|을|ㄹ)뿐$/ , only: /(할|될|볼|있을|없을|했을)뿐/ },
+];
+function depNouns(text, out) {
+  for (const r of DEP_RULES) {
+    r.re.lastIndex = 0;
+    let m;
+    while ((m = r.re.exec(text))) {
+      const chunk = text.slice(Math.max(0, m.index - 2), m.index + m[0].length);
+      if (r.skip && r.skip.test(chunk)) continue;
+      if (r.only && !r.only.test(chunk)) continue;
+      out.push({ cat: '띄어쓰기', start: m.index, end: m.index + m[0].length, word: m[0], to: r.to(m), msg: r.msg });
+    }
+  }
+}
+
+// 너무 길게 붙은 어절: 어디를 띄울지 모를 때는 확인만 요청
+function longWords(text, out) {
+  const re = /[가-힣]{10,}/g;
+  let m;
+  while ((m = re.exec(text))) {
+    out.push({ cat: '띄어쓰기', start: m.index, end: m.index + m[0].length, word: m[0], to: null, msg: `'${m[0]}'이(가) 너무 길게 붙어 있어요. 띄어 쓸 곳이 빠지지 않았는지 확인해 주세요.` });
   }
 }
 
@@ -135,6 +220,14 @@ export function spellCheck(text) {
   }
   deung(t, out);
   nounHam(t, out);
+  josaGlue(t, out);
+  objHa(t, out);
+  adverbGlue(t, out);
+  depNouns(t, out);
+  // 긴 어절 경고는 다른 띄어쓰기 지적이 없는 곳에만
+  const longs = [];
+  longWords(t, longs);
+  for (const L of longs) if (!out.some((x) => x.cat === '띄어쓰기' && x.start < L.end && x.end > L.start)) out.push(L);
   spaces(t, out);
   punctuation(t, out);
   // 겹치는 지적은 하나만

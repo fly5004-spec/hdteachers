@@ -1,7 +1,7 @@
 // 학생 자료(수행평가 결과표 · 활동 보고서) → 학생별 분석
 // 브라우저 안에서만 처리합니다. 이름은 화면 표시용으로만 쓰고 저장하거나 보내지 않습니다.
-import { toEumseum, splitSentences, checkText } from './rules.js?v=9';
-import { JAYUL_CHIPS } from './data.js?v=9';
+import { toEumseum, splitSentences, checkText } from './rules.js?v=10';
+import { JAYUL_CHIPS } from './data.js?v=10';
 
 const num = (v) => {
   const n = Number(String(v ?? '').replace(/[^\d.\-]/g, ''));

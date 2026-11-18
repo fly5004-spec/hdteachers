@@ -1,8 +1,8 @@
 // '생기부 점검' 탭: 입력 정리와 전체 점검 (브라우저·Node 공용)
-import { checkText } from './rules.js?v=9';
-import { spellCheck } from './spell.js?v=9';
-import { findDuplicates } from './dup.js?v=9';
-import { buildXlsx } from './xlsx.js?v=9';
+import { checkText } from './rules.js?v=10';
+import { spellCheck } from './spell.js?v=10';
+import { findDuplicates } from './dup.js?v=10';
+import { buildXlsx } from './xlsx.js?v=10';
 
 const num = (v) => {
   const n = Number(String(v ?? '').replace(/[^\d.]/g, ''));

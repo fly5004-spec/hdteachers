@@ -1,6 +1,6 @@
 // 성취수준 · 수행평가 점수 · 성취기준 문장 만들기
 // 주의: 점수와 성취수준(A~E)은 문장에 적지 않고, 수준에 맞는 '표현의 깊이'에만 반영합니다.
-import { THREE_LEVEL_SUBJECTS, LEVEL_CUTS } from './data.js?v=9';
+import { THREE_LEVEL_SUBJECTS, LEVEL_CUTS } from './data.js?v=10';
 
 export const levelCount = (subject) => (THREE_LEVEL_SUBJECTS.includes(String(subject || '').trim()) ? 3 : 5);
 export const levelsFor = (subject) => LEVEL_CUTS[levelCount(subject)].map(([l]) => l);
