@@ -13,6 +13,9 @@ public/            화면 (HTML · CSS · JS, 빌드 없음)
   lib/standards.js 성취기준 파일(엑셀·CSV) 읽기와 양식
   lib/analyze.js   학생 자료(수행평가 결과표·활동 보고서) 분석
   lib/intake.js    학생 자료 파일 읽기(엑셀·CSV·PDF·텍스트)
+  lib/spell.js     맞춤법·띄어쓰기·문장 부호 점검(자주 틀리는 표현)
+  lib/dup.js       학생끼리 6어절 이상 같은 문장 찾기
+  lib/review.js    '생기부 점검' 탭: 붙여 넣기·엑셀 읽기, 전체 점검, 결과 엑셀
   lib/records.js   저장한 문장 → 엑셀 시트
   lib/xlsx.js      엑셀(.xlsx) 파일 만들기 (외부 라이브러리 없음)
 vendor/pdfjs/      PDF 글자 읽기 도구(pdf.js 3.11.174, Apache-2.0)

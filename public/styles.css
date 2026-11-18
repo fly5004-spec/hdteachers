@@ -171,6 +171,42 @@ button{cursor:pointer}
 .found dd{margin:0}
 .found .raw{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
 
+/* 생기부 점검 탭 */
+.tab{flex:1 1 240px}
+.mode-check .left{flex:1 1 380px}
+.mode-check .right{flex:2 1 600px}
+.paste{min-height:260px;font-size:15px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+.stat{background:var(--tint);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-size:22px;line-height:1.2}
+.stat span{font-size:13px;color:var(--muted)}
+.stat.bad{background:var(--err-bg)}
+.stat.bad b{color:var(--err)}
+.dupbox{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-radius:12px;background:#F4EEFF;border:1px solid #CDB8F5}
+.dupbox .ctitle{display:flex;align-items:center;gap:6px;color:#4B2A8A}
+.alert.soft{background:#F4EEFF;border-color:#CDB8F5;color:#3B2270}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:13px;color:var(--muted)}
+.clist-wrap{display:flex;flex-direction:column;gap:12px}
+.ccard{border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:#fff}
+.ccard.has{border-color:#F3B4B4}
+.ccard-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ccard-h .ccard-bytes{margin-left:auto}
+.ccard-h .ccard-bytes.over{color:var(--err);font-weight:700}
+.ctext{margin:0;font-size:16px;line-height:1.9;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.cedit{min-height:140px}
+.clist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.clist li{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.clist li > span:nth-child(2){flex:1 1 220px}
+.ctag{flex:none;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:#EEE;white-space:nowrap}
+mark.hl-dup,.ctag.t-dup{background:#E4D6FF;color:#3B2270}
+mark.hl-sp,.ctag.hl-sp{background:#FFD3D0;color:#7A1B14}
+mark.hl-ws,.ctag.hl-ws{background:#FFE0B8;color:#6B3A00}
+mark.hl-pu,.ctag.hl-pu{background:#FFF1A8;color:#5C4A0E}
+mark.hl-rl,.ctag.t-rl{background:#FDECEC;color:#7A1B14;text-decoration:underline wavy var(--err-line);text-underline-offset:4px}
+.ctext mark{border-radius:3px;padding:0 1px}
+mark.miss{font-weight:700}
+.ed-back mark.dp{background:#E4D6FF;text-decoration:underline wavy #7C5CC4;text-decoration-thickness:1.5px;text-underline-offset:5px;color:transparent}
+
 /* 저장한 문장 */
 #saved{gap:16px}
 #saved .rhead{align-items:flex-start}

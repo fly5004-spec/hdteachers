@@ -27,6 +27,7 @@
     <div class="tabs" role="tablist" aria-label="작성 영역">
       <button type="button" class="tab" role="tab" id="tab-gwa" data-top="gwa">교과 세부능력 및 특기사항 (과세특)<span>모든 교과 선생님</span></button>
       <button type="button" class="tab" role="tab" id="tab-home" data-top="home">자율·자치활동 · 행동특성 및 종합의견<span>담임 선생님</span></button>
+      <button type="button" class="tab" role="tab" id="tab-check" data-top="check">생기부 점검<span>중복 문장 · 맞춤법 · 띄어쓰기</span></button>
     </div>
 
     <div class="main">
@@ -38,6 +39,7 @@
   </main>
 </div>
 <input type="file" id="dataFile" accept=".xlsx,.csv,.pdf,.txt,.hwp,.hwpx,.xls" multiple hidden aria-hidden="true">
+<input type="file" id="checkFile" accept=".xlsx,.csv,.txt,.xls" hidden aria-hidden="true">
 <input type="file" id="stdFile" accept=".xlsx,.csv,.txt" hidden aria-hidden="true">
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="app.js"></script>

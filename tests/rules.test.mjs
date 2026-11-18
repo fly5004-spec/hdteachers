@@ -210,3 +210,42 @@ test('학생 자료: PDF 쪽 나누기와 보고서 분석', async () => {
   const one = pagesToStudents(['활동 내용만 있는 글입니다. 포스터를 만들었다.'], '20305 박가상.pdf', {});
   assert.equal(one[0].num, '5');
 });
+
+test('맞춤법·띄어쓰기·문장 부호', async () => {
+  const { spellCheck, applyAllSpell } = await import('../public/lib/spell.js');
+  const bad = '실험에 적극적으로 참여 함.모둠원과 협력하여 할수있는 일을 찾았음 .  자료를 정리하는것을 좋아함!! 발표등 다양한 활동에 역활을 맡아 성실이 수행 됨';
+  const cats = spellCheck(bad).map((x) => x.cat);
+  for (const c of ['맞춤법', '띄어쓰기', '문장 부호']) assert.ok(cats.includes(c), c);
+  assert.equal(applyAllSpell(bad), '실험에 적극적으로 참여함. 모둠원과 협력하여 할 수 있는 일을 찾았음. 자료를 정리하는 것을 좋아함. 발표 등 다양한 활동에 역할을 맡아 성실히 수행됨.');
+  const ok = '평소 밝고 긍정적인 태도로 학급 생활에 즐겁게 참여함. 갈등 상황에서 차분히 대화함. 실험을 잘 함. 발표를 함. 평등한 관계를 위해 노력함. 3.5배 늘어남.';
+  assert.deepEqual(spellCheck(ok).map((x) => `${x.cat}:${x.word}`), []);
+  assert.ok(spellCheck('목표를 이룸~').some((x) => x.msg.includes('물결표')));
+  assert.ok(spellCheck("'빛과 파동 단원에서 탐구함.").some((x) => x.msg.includes('짝')));
+});
+
+test('6어절 이상 중복 찾기', async () => {
+  const { findDuplicates } = await import('../public/lib/dup.js');
+  const d = findDuplicates([
+    { id: 'a', text: '수업 시간 내내 집중하며 질문에 적극적으로 답하고 활동에 성실히 참여함.' },
+    { id: 'b', text: '처음부터 수업 시간 내내 집중하며 질문에 적극적으로 답하고 활동함.' },
+    { id: 'c', text: '수업 시간 내내 집중하며 질문에 답함.' },
+  ]);
+  assert.equal(d.groups.length, 1);
+  assert.deepEqual(d.groups[0].ids.sort(), ['a', 'b']);
+  assert.equal(d.byId.a[0].words, 7);
+  assert.equal(d.byId.c, undefined, '5어절만 같으면 중복 아님');
+});
+
+test('점검 탭: 붙여 넣기·표 읽기·엑셀 결과', async () => {
+  const { pastedToItems, rowsToItems, reviewAll, reviewToXlsx } = await import('../public/lib/review.js');
+  const items = pastedToItems('1\t김가상\t평소 밝고 긍정적인 태도로 학급 생활에 즐겁게 참여함.\n2\t이가상\t평소 밝고 긍정적인 태도로 학급 생활에 즐겁게 참여함. 역활을 잘함');
+  assert.deepEqual(items.map((x) => x.label), ['1번 김가상', '2번 이가상']);
+  const r = reviewAll(items, 'hang');
+  assert.equal(r.summary.dupStudents, 2);
+  assert.equal(r.summary['맞춤법'], 1);
+  const t = rowsToItems([['번호', '성명', '세부능력 및 특기사항'], ['3', '박가상', '실험을 통해 원리를 탐구하고 결과를 발표함.']]);
+  assert.equal(t[0].label, '3번 박가상');
+  const bytes = reviewToXlsx(items, r);
+  assert.equal(bytes[0], 0x50);
+  assert.equal(pastedToItems('첫째 학생 내용임.\n\n둘째 학생 내용임.').length, 2);
+});
